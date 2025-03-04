@@ -16,6 +16,10 @@ library(stringr)
 library(forecast)
 ```
 
+## Dataset
+
+The dataset we are working with was obtained from the github of Johns Hopkins University. It contains information revolving around COVID cases and deaths from both the United States and the entire world.
+
 ```{r get_jhu_data, include=FALSE}
 url_in <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/"
 
@@ -29,6 +33,8 @@ global_deaths <- read_csv(urls[4])
 US_cases <- read_csv(urls[1])
 US_deaths <- read_csv(urls[3])
 ```
+
+## Cleaning
 
 After looking at global_cases and global_death, I would like to 
 tidy those datasets and put each variable (date, cases, deaths)
@@ -102,7 +108,9 @@ US <- US_cases %>%
   full_join(US_deaths)
 ```
 
-Now we are going to do some basic analysis of the data sets. First we will look at the deaths per million of each the country as a whole and then the deaths per million of Colorado by itself. 
+## EDA
+
+Now we are going to do some basic analysis of the data sets. First we will look at the deaths per million of each the country as a whole and then the deaths per million of Colorado by itself. To do this we will just take the total deaths and divide it by one million.
 
 ```{r analyze_data, echo=FALSE, results='hide'}
 US_by_state <- US %>%
@@ -148,6 +156,12 @@ US_totals %>%
     labs(title = str_c("COVID19 in ", state), y = NULL)
   
 ```
+
+## Results
+
+As you can see the data from Colorado is fairly proportional to the data from the whole country. At the beginning of the pandemic the disease spread quickly because no one knew what was going on. It then began to taper off because of things like mask mandates and lock down orders. These are just assumptions and must be verified through a comprehensive anaylysis of state-by-state policy.
+
+## Further Investigation
 
 Now we are going to look at the relationship between new cases and new deaths, both in the entire country and the State of Colorado.
 
@@ -196,7 +210,13 @@ Now we are going to look at the relationship between new cases and new deaths, b
     slice_min(deaths_per_thou, n = 10)
 ``` 
 
-Now we are going to model some data. We are using a simple linear model so we will probaly not get the best fit.
+## Results
+
+In both Colorado and the nation as whole, the trend is relatively evident that the number of deaths is proportional to the number of cases. It would be interesting to investigate the correlation and see how strong it is.
+
+## Initial Modelling
+
+We will now create a model based on the data to get a better idea of where the trends are going in the data. Here we are going to be using a simple linear model to investigate the relationship between deaths per thousand people and cases per thousand people.
 
 ```{r covid_modelling, echo=FALSE, results='hide'}
 mod <- lm(deaths_per_thou ~ cases_per_thou, data = US_state_totals)
@@ -219,7 +239,13 @@ US_total_w_pred %>% ggplot() +
 
 ```
 
-I am interested in seeing what states had the highest prevalence of COVID cases in both total cases and cases per thousand.
+## Results
+
+This model is a good generalization but might become worse wen more data is collected.
+
+## Investigation
+
+I am interested in seeing what states had the highest prevalence of COVID cases in both total cases and cases per thousand. To do this we will calculate the average of both statistics and plot them next to a bar chart where each state has its own bar.
 
 ```{r COVID_prevalence, echo=FALSE, results='hide', fig.height=12, fig.width=10}
 avg_cases <- mean(US_state_totals$cases)
@@ -255,9 +281,13 @@ US_state_totals %>%
   theme(legend.position = "none")
 ```
 
-As you can see some states like Rhode Island and Alaska, as well as territories like Guam were disproportionately affected by COVID. 
+## Results
 
-I will now convert the data to time series in order to use the ARIMA model to predict cases for future years.
+As you can see some states like Rhode Island and Alaska, as well as territories like Guam were disproportionately affected by COVID. My assumption is that this is due to relaxed safety measure such as no formal mask mandate. This is however just my personal assumption and would need to be verified through examintation of state-by-state COVID practices.
+
+## Final Modelling
+
+I will now convert the data to time series in order to use the ARIMA model to predict cases for future years. This can be done using the ts() function. Here we are modelling cases and cases per thousand over time.
 
 ```{r arima_predictions, echo=FALSE}
 US_totals_ts <- ts(US_totals$cases,
@@ -276,7 +306,9 @@ autoplot(forecast_rest_2023) +
 
 ```
 
-This model is more than likely a better interpretation of the data than our previous linear model. The dark blue shaded region represents an 80% confidence interval while the lighter blue represents a 95% confidence interval.
+## Results
+
+This model seems to be a relatively good interpretation of the data. The trend seems like it could follow the line that was predicted. In order to get a better model we would either need to pick one that is fine-tuned for disease spread or figure out the actual numbers and calculate an error score to better train our model. The dark blue shaded region represents an 80% confidence interval while the lighter blue represents a 95% confidence interval. However, there could be bias involved because ARIMA is not specifically tuned to model disease spread let alone COVID. 
 
 ```{r arima_deaths_predictions, echo=FALSE}
 US_deaths_ts <- ts(US_totals$deaths,
@@ -293,3 +325,7 @@ autoplot(forecast_deaths_2023) +
        y = "Number of Deaths") +
   theme_minimal()
 ```
+
+## Results
+
+Here a similar approach was used to create a forecast of the amount of deaths expected to occur in the United States in 2023 due to COVID. Once again, the dark blue represents an 80% confidence interval and the light blue represents a 95% confidence interval. Like the last, this model most likely involves some bias because it is not specifically tuned to model disease spread.
